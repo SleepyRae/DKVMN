@@ -153,14 +153,16 @@ def test_one_dataset(params, file_name, test_q_data, test_qa_data):
     f_save_log.write(log_info)
 
 if __name__ == '__main__':
+    # 实验参数
     parser = argparse.ArgumentParser(description='Script to test KVMN.')
-    parser.add_argument('--gpus', type=str, default='0', help='the gpus will be used, e.g "0,1,2,3"')
+    parser.add_argument('--gpus', type=str, default=None, help='the gpus will be used, e.g "0,1,2,3"')  # 默认CPU
     parser.add_argument('--max_iter', type=int, default=100, help='number of iterations')
     parser.add_argument('--test', type=bool, default=False, help='enable testing')
     parser.add_argument('--train_test', type=bool, default=True, help='enable testing')
     parser.add_argument('--show', type=bool, default=True, help='print progress')
     parser.add_argument('--seedNum', type=int, default=1024, help='the random seed')
 
+    # 数据集
     dataset = "assist2009_updated"  # synthetic / assist2009_updated / assist2015 / KDDal0506 / STATICS
 
     if dataset == "synthetic":
