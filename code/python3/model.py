@@ -70,11 +70,11 @@ class MODEL(object):
 
     def sym_gen(self):
         ### TODO input variable 'q_data'
-        q_data = mx.sym.Variable('q_data', shape=(self.seqlen, self.batch_size)) # (seqlen, batch_size)
+        q_data = mx.sym.Variable('q_data', shape=(self.seqlen, self.batch_size))  # (seqlen, batch_size)
         ### TODO input variable 'qa_data'
         qa_data = mx.sym.Variable('qa_data', shape=(self.seqlen, self.batch_size))  # (seqlen, batch_size)
         ### TODO input variable 'target'
-        target = mx.sym.Variable('target', shape=(self.seqlen, self.batch_size)) #(seqlen, batch_size)
+        target = mx.sym.Variable('target', shape=(self.seqlen, self.batch_size))  #(seqlen, batch_size)
 
         ### Initialize Memory
         init_memory_key = mx.sym.Variable('init_memory_key_weight')
@@ -93,7 +93,11 @@ class MODEL(object):
 
 
         ### embedding
-        q_data = mx.sym.BlockGrad(q_data)
+        q_data = mx.sym.BlockGrad(q_data)  # 阻塞梯度传播
+        # 输入为离散变量，因此该层对于输入是不可求导的
+        # 输入使用mx.sym.BlockGrad进行包裹，目的在于获取q_data的输出，
+        # 但是可以同时保证不对其进行求导。
+        # 不仅如此，对于一些不可导的输入我们都可以利用其进行包裹。
         q_embed_data = mx.sym.Embedding(data=q_data, input_dim=self.n_question+1,
                                         output_dim=self.q_embed_dim, name='q_embed')
         slice_q_embed_data = mx.sym.SliceChannel(q_embed_data, num_outputs=self.seqlen, axis=0, squeeze_axis=True)
@@ -102,6 +106,7 @@ class MODEL(object):
         qa_embed_data = mx.sym.Embedding(data=qa_data, input_dim=self.n_question*2+1,
                                          output_dim=self.qa_embed_dim, name='qa_embed')
         slice_qa_embed_data = mx.sym.SliceChannel(qa_embed_data, num_outputs=self.seqlen, axis=0, squeeze_axis=True)
+        # 在指定的维度上，把输入数据等分切分
 
         value_read_content_l = []
         input_embed_l = []
@@ -109,6 +114,9 @@ class MODEL(object):
             ## Attention
             q = slice_q_embed_data[i]
             correlation_weight = mem.attention(q)
+            # 相关权重的计算:
+            # 给定一道题目，计算该题目和哪些具体的知识点相关，
+            # 同时输出与各个知识点的相关程度
 
             ## Read Process
             read_content = mem.read(correlation_weight) #Shape (batch_size, memory_state_dim)
@@ -120,7 +128,7 @@ class MODEL(object):
             qa = slice_qa_embed_data[i]
             new_memory_value = mem.write(correlation_weight, qa)
 
-        all_read_value_content = mx.sym.Concat(*value_read_content_l, num_args=self.seqlen, dim=0)
+        all_read_value_content = mx.sym.Concat(*value_read_content_l, num_args=self.seqlen, dim=0)  # 连接
 
         input_embed_content = mx.sym.Concat(*input_embed_l, num_args=self.seqlen, dim=0)
         input_embed_content = mx.sym.FullyConnected(data=input_embed_content, num_hidden=50, name="input_embed_content")

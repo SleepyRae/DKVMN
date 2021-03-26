@@ -45,9 +45,9 @@ def compute_accuracy(all_target, all_pred):
 
 def train(net, params, q_data, qa_data, label):
     N = int(math.floor(len(q_data) / params.batch_size))
-    q_data = q_data.T # Shape: (200,3633)
+    q_data = q_data.T # Shape: (200,3633)   简单转置矩阵
     qa_data = qa_data.T  # Shape: (200,3633)
-    # Shuffle the data
+    # Shuffle the data 打乱顺序
     shuffled_ind = np.arange(q_data.shape[1])
     np.random.shuffle(shuffled_ind)
     q_data = q_data[:, shuffled_ind]

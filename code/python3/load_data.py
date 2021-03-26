@@ -16,6 +16,11 @@ class DATA(object):
     ### 15
     ### 1,1,1,1,7,7,9,10,10,10,10,11,11,45,54
     ### 0,1,1,1,1,1,0,0,1,1,1,1,1,0,0
+    '''
+        第一行表示交互序列的长度，
+        第二行表示练习ID，
+        第三行其中每个元素代表正确答案（即1）或错误答案（即0）
+    '''
     def load_data(self, path):
         f_data = open(path , 'r')
         q_data = []
@@ -26,7 +31,7 @@ class DATA(object):
             if lineID % 3 == 1:
                 Q = line.split(self.separate_char)
                 if len( Q[len(Q)-1] ) == 0:
-                    Q = Q[:-1]
+                    Q = Q[:-1]  # #从位置0到位置-1（，）之前的数
                 #print(len(Q))
             elif lineID % 3 == 2:
                 A = line.split(self.separate_char)
@@ -38,7 +43,7 @@ class DATA(object):
                 n_split = 1
                 #print('len(Q):',len(Q))
                 if len(Q) > self.seqlen:
-                    n_split = math.floor(len(Q) / self.seqlen)
+                    n_split = math.floor(len(Q) / self.seqlen)  # 对浮点数向下取整
                     if len(Q) % self.seqlen:
                         n_split = n_split + 1
                 #print('n_split:',n_split)

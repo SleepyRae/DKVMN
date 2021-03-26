@@ -48,20 +48,30 @@ def train_one_dataset(params, file_name, train_q_data, train_qa_data, valid_q_da
                     memory_key_state_dim=params.memory_key_state_dim,
                     memory_value_state_dim=params.memory_value_state_dim,
                     final_fc_dim = params.final_fc_dim)
+    # 创建模型
     # create a module by given a Symbol
     net = mx.mod.Module(symbol=g_model.sym_gen(),
                         data_names = ['q_data', 'qa_data'],
                         label_names = ['target'],
                         context=params.ctx)
-    # create memory by given input shapes
+    '''
+        symbol：网络符号
+        context：执行设备（设备列表）
+        data_names：数据变量名称列表
+        label_names：标签变量名称列表
+    '''
+
+    # 中间层接口
+    # create memory by given input shapes 通过内存分配为计算搭建环境
     net.bind(data_shapes=[mx.io.DataDesc(name='q_data', shape=(params.seqlen, params.batch_size), layout='SN'),
                           mx.io.DataDesc(name='qa_data', shape=(params.seqlen, params.batch_size), layout='SN')],
              label_shapes=[mx.io.DataDesc(name='target', shape=(params.seqlen, params.batch_size), layout='SN')])
-    # initial parameters with the default random initializer
+    # initial parameters with the default random initializer 初始化参数
     net.init_params(initializer=mx.init.Normal(sigma=params.init_std))
     # decay learning rate in the lr_scheduler
     lr_scheduler = mx.lr_scheduler.FactorScheduler(step=20*(train_q_data.shape[0]/params.batch_size), factor=0.667, stop_factor_lr=1e-5)
 
+    # 初始化优化器
     net.init_optimizer(optimizer='sgd', optimizer_params={'learning_rate': params.lr, 'momentum':params.momentum,'lr_scheduler': lr_scheduler})
 
     for parameters in net.get_params()[0]:
@@ -154,13 +164,13 @@ def test_one_dataset(params, file_name, test_q_data, test_qa_data):
 
 if __name__ == '__main__':
     # 实验参数
-    parser = argparse.ArgumentParser(description='Script to test KVMN.')
+    parser = argparse.ArgumentParser(description='Script to test KVMN.')  # 建立解析对象
     parser.add_argument('--gpus', type=str, default=None, help='the gpus will be used, e.g "0,1,2,3"')  # 默认CPU
-    parser.add_argument('--max_iter', type=int, default=100, help='number of iterations')
+    parser.add_argument('--max_iter', type=int, default=100, help='number of iterations')  # 迭代次数
     parser.add_argument('--test', type=bool, default=False, help='enable testing')
-    parser.add_argument('--train_test', type=bool, default=True, help='enable testing')
+    parser.add_argument('--train_test', type=bool, default=True, help='enable testing')  # enable testing after training
     parser.add_argument('--show', type=bool, default=True, help='print progress')
-    parser.add_argument('--seedNum', type=int, default=1024, help='the random seed')
+    parser.add_argument('--seedNum', type=int, default=1024, help='the random seed')  # 随机种子
 
     # 数据集
     dataset = "assist2009_updated"  # synthetic / assist2009_updated / assist2015 / KDDal0506 / STATICS
@@ -184,7 +194,7 @@ if __name__ == '__main__':
         parser.add_argument('--data_name', type=str, default='naive_c5_q50_s4000_v1', help='data set name')
         parser.add_argument('--load', type=str, default='synthetic/v1', help='model file to load')
         parser.add_argument('--save', type=str, default='synthetic/v1', help='path to save model')
-    if dataset == "assist2009_updated":
+    elif dataset == "assist2009_updated":
         parser.add_argument('--batch_size', type=int, default=32, help='the batch size')
         parser.add_argument('--q_embed_dim', type=int, default=50, help='question embedding dimensions')
         parser.add_argument('--qa_embed_dim', type=int, default=200, help='answer and question embedding dimensions')
@@ -243,10 +253,10 @@ if __name__ == '__main__':
         parser.add_argument('--load', type=str, default='STATICS', help='model file to load')
         parser.add_argument('--save', type=str, default='STATICS', help='path to save model')
 
-    params = parser.parse_args()
-    params.lr = params.init_lr
-    params.memory_key_state_dim = params.q_embed_dim
-    params.memory_value_state_dim = params.qa_embed_dim
+    params = parser.parse_args()  # 属性给予params实例
+    params.lr = params.init_lr  # initial learning rate
+    params.memory_key_state_dim = params.q_embed_dim  # Mk维度
+    params.memory_value_state_dim = params.qa_embed_dim  # Mv维度
 
     params.dataset = dataset
     if params.gpus == None:
@@ -259,6 +269,10 @@ if __name__ == '__main__':
 
     # Read data
     dat = DATA(n_question=params.n_question, seqlen=params.seqlen, separate_char=',')
+    '''
+        --n_question: the number of unique questions in the dataset
+        --seqlen: the allowed maximum length of a sequence
+    '''
     seedNum = params.seedNum
     np.random.seed(seedNum)
     if not params.test:
@@ -272,6 +286,11 @@ if __name__ == '__main__':
                     '_m' + str(params.memory_size) + '_std' + str(params.init_std) + \
                     '_lr' + str(params.init_lr) + '_gn' + str(params.maxgradnorm) + \
                     '_f' + str(params.final_fc_dim)+'_s'+str(seedNum)
+        '''
+            --init_std: weight initialization std
+            --maxgradnorm: maximum gradient norm
+            --final_fc_dim: hidden state dim for final fc layer
+        '''
         train_data_path = params.data_dir + "/" + params.data_name + "_train1.csv"
         valid_data_path = params.data_dir + "/" + params.data_name + "_valid1.csv"
         train_q_data, train_qa_data = dat.load_data(train_data_path)
@@ -282,6 +301,7 @@ if __name__ == '__main__':
         print("valid_q_data.shape", valid_q_data.shape)  ###(1566, 200)
         print("valid_qa_data.shape", valid_qa_data.shape)  ###(1566, 200)
         print("\n")
+        # train
         best_epoch = train_one_dataset(params, file_name, train_q_data, train_qa_data, valid_q_data, valid_qa_data)
         if params.train_test:
             test_data_path = params.data_dir + "/" + params.data_name + "_test.csv"
